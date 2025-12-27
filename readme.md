@@ -161,34 +161,6 @@ cv2.VideoCapture(1)
 deactivate
 ```
 
----
-
-## 📌 Best Practices
-
-- ❌ Do NOT upload the `venv/` folder to GitHub
-- ✅ Always include `requirements.txt`
-- ✅ Use `.gitignore` for clean repositories
-
-Example `.gitignore`:
-
-```gitignore
-venv/
-__pycache__/
-.env
-```
-
----
-
-## 🚀 Future Improvements
-
-- Save drawings as image files
-- Add gesture-based undo/redo
-- Support multiple hands
-- Improve UI and color selection
-- Optimize performance for low-end systems
-
----
-
 ## 📄 License
 
 This project is open-source and intended for learning, experimentation, and personal use.
