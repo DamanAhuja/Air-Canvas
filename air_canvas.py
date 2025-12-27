@@ -28,12 +28,26 @@ colors = [
 color_names = ["PURPLE", "BLUE", "GREEN", "YELLOW", "ERASER"]
 current_color = colors[0]
 
-def fingers_up(hand):
-    fingers = []
-    fingers.append(hand.landmark[8].y < hand.landmark[6].y)    # index
-    fingers.append(hand.landmark[12].y < hand.landmark[10].y)  # middle
-    return fingers
 
+# ---------- FINGER DETECTION FUNCTIONS ----------
+def fingers_up(hand):
+    """Check if index & middle finger are up."""
+    index = hand.landmark[8].y < hand.landmark[6].y
+    middle = hand.landmark[12].y < hand.landmark[10].y
+    return index, middle
+
+
+def four_fingers_up(hand):
+    """Check if index + middle + ring + pinky are up."""
+    return (
+        hand.landmark[8].y < hand.landmark[6].y and     # index
+        hand.landmark[12].y < hand.landmark[10].y and   # middle
+        hand.landmark[16].y < hand.landmark[14].y and   # ring
+        hand.landmark[20].y < hand.landmark[18].y       # pinky
+    )
+
+
+# ---------- COLOR PALETTE ----------
 def draw_palette(img):
     h, w, _ = img.shape
     box_w = w // len(colors)
@@ -44,6 +58,8 @@ def draw_palette(img):
         cv2.putText(img, color_names[i], (x1 + 10, 40),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
 
+
+# --------------- MAIN LOOP ----------------
 while True:
     success, frame = cap.read()
     if not success:
@@ -68,12 +84,24 @@ while True:
             mp_draw.draw_landmarks(frame, hand, mp_hands.HAND_CONNECTIONS)
 
             index_up, middle_up = fingers_up(hand)
+            four_up = four_fingers_up(hand)
 
             x = int(hand.landmark[8].x * w)
             y = int(hand.landmark[8].y * h)
 
-            # Selection mode
-            if index_up and middle_up:
+            # -------- ERASE MODE (4 fingers) --------
+            if four_up:
+                mode = "ERASE"
+                cv2.circle(frame, (x, y), 20, (0, 0, 0), cv2.FILLED)
+
+                if prev_x == 0 and prev_y == 0:
+                    prev_x, prev_y = x, y
+
+                cv2.line(canvas, (prev_x, prev_y), (x, y), (0, 0, 0), 40)
+                prev_x, prev_y = x, y
+
+            # -------- SELECT COLOR (index + middle) --------
+            elif index_up and middle_up:
                 mode = "SELECT"
                 prev_x, prev_y = 0, 0
 
@@ -85,7 +113,7 @@ while True:
 
                 cv2.circle(frame, (x, y), 15, current_color, cv2.FILLED)
 
-            # Draw / Erase mode
+            # -------- DRAW MODE (index only) --------
             elif index_up and not middle_up:
                 mode = "DRAW"
                 cv2.circle(frame, (x, y), 10, current_color, cv2.FILLED)
@@ -103,17 +131,19 @@ while True:
     else:
         prev_x, prev_y = 0, 0
 
+    # Merge Canvas with Frame
     gray = cv2.cvtColor(canvas, cv2.COLOR_BGR2GRAY)
     _, inv = cv2.threshold(gray, 20, 255, cv2.THRESH_BINARY_INV)
     inv = cv2.cvtColor(inv, cv2.COLOR_GRAY2BGR)
     frame = cv2.bitwise_and(frame, inv)
     frame = cv2.bitwise_or(frame, canvas)
 
-    cv2.putText(frame, f"Mode: {mode}",
-                (10, h - 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+    # Text info
+    cv2.putText(frame, f"Mode: {mode}", (10, h - 40),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
     cv2.putText(frame,
-                "Index: Draw | Index+Middle: Select Color | C: Clear | Q: Quit",
+                "Index: Draw  |  Index+Middle: Select Color  |  4 Fingers: Erase  |  C: Clear  |  Q: Quit",
                 (10, h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 
     cv2.imshow("Air Canvas", frame)
@@ -126,6 +156,3 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
-
-
-
